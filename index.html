@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Stars - Mini Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #gameCanvas {
+            border: 4px solid #667eea;
+            border-radius: 10px;
+            background: linear-gradient(to bottom, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%);
+            display: block;
+            margin: 0 auto;
+            cursor: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .game-over.show {
+            display: block;
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .game-over h2 {
+            color: #764ba2;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .game-over p {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .instructions {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .stat-box {
+                font-size: 1em;
+                padding: 10px 15px;
+            }
+            
+            button {
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⭐ Catch the Stars ⭐</h1>
+        
+        <div class="stats">
+            <div class="stat-box">Score: <span id="score">0</span></div>
+            <div class="stat-box">Lives: <span id="lives">3</span></div>
+            <div class="stat-box">Level: <span id="level">1</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+        <div class="buttons">
+            <button id="startBtn">Start Game</button>
+            <button id="pauseBtn" style="display: none;">Pause</button>
+            <button id="restartBtn" style="display: none;">Restart</button>
+        </div>
+
+        <div class="instructions">
+            <strong>How to Play:</strong> Move your mouse (or tap on mobile) to control the basket. 
+            Catch the falling stars ⭐ to score points! Avoid the bombs 💣 or lose a life. 
+            The game gets faster as you level up!
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>Game Over!</h2>
+        <p>Your Final Score: <strong id="finalScore">0</strong></p>
+        <p>Level Reached: <strong id="finalLevel">1</strong></p>
+        <button id="playAgainBtn">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameState = {
+            score: 0,
+            lives: 3,
+            level: 1,
+            isPlaying: false,
+            isPaused: false,
+            basket: {
+                x: canvas.width / 2,
+                y: canvas.height - 50,
+                width: 80,
+                height: 20,
+                speed: 8
+            },
+            items: [],
+            lastItemTime: 0,
+            itemInterval: 1000,
+            mouseX: canvas.width / 2
+        };
+
+        // UI Elements
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const gameOverDiv = document.getElementById('gameOver');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const scoreSpan = document.getElementById('score');
+        const livesSpan = document.getElementById('lives');
+        const levelSpan = document.getElementById('level');
+        const finalScoreSpan = document.getElementById('finalScore');
+        const finalLevelSpan = document.getElementById('finalLevel');
+
+        // Mouse/Touch tracking
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            gameState.mouseX = e.clientX - rect.left;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            gameState.mouseX = touch.clientX - rect.left;
+        });
+
+        // Button events
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', togglePause);
+        restartBtn.addEventListener('click', restartGame);
+        playAgainBtn.addEventListener('click', () => {
+            gameOverDiv.classList.remove('show');
+            restartGame();
+        });
+
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.isPaused = false;
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            restartBtn.style.display = 'inline-block';
+            gameLoop();
+        }
+
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            pauseBtn.textContent = gameState.isPaused ? 'Resume' : 'Pause';
+            if (!gameState.isPaused) {
+                gameLoop();
+            }
+        }
+
+        function restartGame() {
+            gameState.score = 0;
+            gameState.lives = 3;
+            gameState.level = 1;
+            gameState.items = [];
+            gameState.lastItemTime = 0;
+            gameState.itemInterval = 1000;
+            updateUI();
+            startGame();
+        }
+
+        function gameOver() {
+            gameState.isPlaying = false;
+            finalScoreSpan.textContent = gameState.score;
+            finalLevelSpan.textContent = gameState.level;
+            gameOverDiv.classList.add('show');
+            startBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            restartBtn.style.display = 'none';
+        }
+
+        function updateUI() {
+            scoreSpan.textContent = gameState.score;
+            livesSpan.textContent = gameState.lives;
+            levelSpan.textContent = gameState.level;
+        }
+
+        function createItem() {
+            const isBomb = Math.random() < 0.25; // 25% chance of bomb
+            const item = {
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 30,
+                height: 30,
+                speed: 2 + (gameState.level * 0.5),
+                type: isBomb ? 'bomb' : 'star'
+            };
+            gameState.items.push(item);
+        }
+
+        function drawBasket() {
+            const basket = gameState.basket;
+            
+            // Smooth movement towards mouse
+            const diff = gameState.mouseX - basket.x;
+            basket.x += diff * 0.2;
+            
+            // Keep basket in bounds
+            if (basket.x < 0) basket.x = 0;
+            if (basket.x > canvas.width - basket.width) basket.x = canvas.width - basket.width;
+
+            // Draw basket
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+            ctx.fillStyle = '#A0522D';
+            ctx.fillRect(basket.x + 5, basket.y, basket.width - 10, basket.height - 5);
+            
+            // Draw basket handle
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(basket.x + basket.width / 2, basket.y - 5, 20, 0, Math.PI, true);
+            ctx.stroke();
+        }
+
+        function drawItem(item) {
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (item.type === 'star') {
+                // Draw star with glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'yellow';
+                ctx.fillText('⭐', item.x + item.width / 2, item.y + item.height / 2);
+                ctx.shadowBlur = 0;
+            } else {
+                // Draw bomb
+                ctx.fillText('💣', item.x + item.width / 2, item.y + item.height / 2);
+            }
+        }
+
+        function checkCollision(item) {
+            const basket = gameState.basket;
+            return item.x < basket.x + basket.width &&
+                   item.x + item.width > basket.x &&
+                   item.y < basket.y + basket.height &&
+                   item.y + item.height > basket.y;
+        }
+
+        function updateGame(currentTime) {
+            // Spawn items
+            if (currentTime - gameState.lastItemTime > gameState.itemInterval) {
+                createItem();
+                gameState.lastItemTime = currentTime;
+            }
+
+            // Update items
+            for (let i = gameState.items.length - 1; i >= 0; i--) {
+                const item = gameState.items[i];
+                item.y += item.speed;
+
+                // Check collision with basket
+                if (checkCollision(item)) {
+                    if (item.type === 'star') {
+                        gameState.score += 10;
+                        // Level up every 100 points
+                        if (gameState.score % 100 === 0 && gameState.score > 0) {
+                            gameState.level++;
+                            gameState.itemInterval = Math.max(400, gameState.itemInterval - 100);
+                        }
+                    } else {
+                        gameState.lives--;
+                        if (gameState.lives <= 0) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                    gameState.items.splice(i, 1);
+                    updateUI();
+                    continue;
+                }
+
+                // Remove items that went off screen
+                if (item.y > canvas.height) {
+                    if (item.type === 'star') {
+                        // Lost a star
+                        gameState.lives--;
+                        if (gameState.lives <= 0) {
+                            gameOver();
+                            return;
+                        }
+                        updateUI();
+                    }
+                    gameState.items.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Clear canvas with gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1e3c72');
+            gradient.addColorStop(0.5, '#2a5298');
+            gradient.addColorStop(1, '#7e8ba3');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars in background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 73) % canvas.width;
+                const y = (i * 97) % canvas.height;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            // Draw game objects
+            drawBasket();
+            gameState.items.forEach(item => drawItem(item));
+
+            // Draw pause indicator
+            if (gameState.isPaused) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        function gameLoop(currentTime = 0) {
+            if (!gameState.isPlaying) return;
+            if (gameState.isPaused) return;
+
+            updateGame(currentTime);
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
