@@ -198,6 +198,12 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
+        // Cache gradient for better performance
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        bgGradient.addColorStop(0, '#1e3c72');
+        bgGradient.addColorStop(0.5, '#2a5298');
+        bgGradient.addColorStop(1, '#7e8ba3');
+        
         // Game state
         let gameState = {
             score: 0,
@@ -335,9 +341,6 @@
         }
 
         function drawItem(item) {
-            ctx.font = '30px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
             if (item.type === 'star') {
                 // Draw star with glow
                 ctx.shadowBlur = 10;
@@ -408,12 +411,8 @@
         }
 
         function draw() {
-            // Clear canvas with gradient background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#1e3c72');
-            gradient.addColorStop(0.5, '#2a5298');
-            gradient.addColorStop(1, '#7e8ba3');
-            ctx.fillStyle = gradient;
+            // Clear canvas with cached gradient background
+            ctx.fillStyle = bgGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw stars in background
@@ -423,6 +422,11 @@
                 const y = (i * 97) % canvas.height;
                 ctx.fillRect(x, y, 2, 2);
             }
+
+            // Set canvas text properties once before drawing items
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
             // Draw game objects
             drawBasket();
